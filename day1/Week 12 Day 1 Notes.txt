@@ -1,0 +1,396 @@
+Week 12 Day 1 - Redux
+
+***POSSIBLE WORKFLOW***
+npx create-react-app whatever-name-you-want
+cd into file, npm start
+npm install redux
+npm install react-redux
+build reducer and set it to return initial state
+import createStore, reducer and Provider into index.js and set those up
+Wrap root component in Provider
+Build 1 data-sending component and set it to dispatch to props
+Update reducer
+Build display component and set it to map from props
+Make sure all is working well before building next data-sending component
+Remember, to handle values from a textbox, you'll need a local state that can later be copied to the global
+
+- - - -
+
+The main benefit of Redux is that it allows child/subchild components to update without having to send everything up to the overall parent component first.  This is done through a 'global state'.
+
+
+Whatever component values you want to be able to be seen by other components, you can send them to be seen in the global state. BUT you shouldn't put everything in there just in case you might want other stuff to see it. The local/private state should still be used for everything that you don't actively need to be seen by other components.
+
+
+Redux is entirely independent of React - you can use it with react, vue, vanilla js, swift, flutter, whatever.
+
+Azam has a Redux flow diagram on the class Github for today; you will need to refer to it a lot!
+
+So let's get started by creating a simple counter with no global state to begin with:
+
+Let's create a new react app; this part is the same. npx create-react-app hello-redux
+
+then cd into folder, then npm start
+
+So this has no Redux involved for now. 
+
+in Counter app:
+
+import {useState} from 'react
+
+
+
+function Counter() {
+  const [count, setCount] = useState(0)   // this is a local/private state
+
+  const handleIncrement = () => {
+    setCount(count +1)
+  }
+
+  return (
+    <div>
+    <h1>{count}</h1>
+    <button onClick={handleIncrement}>Increment</button>
+  )
+}
+
+export default Counter
+
+Question from Katherine - does this mean we could have 2 separate counters with different increment numbers?
+Per Azam - Yes (injects 2nd instance of Counter into App to demonstrate)
+
+Now let's make a DisplayCounter component:
+
+function DisplayCounter() {
+  do something
+}
+
+export default DisplayCounter
+
+Now these are siblings. How can DisplayCounter see the value of Counter to display it? In the React-only method, we would need to pass the value of Counter up to the App component and then down to DisplayCounter. So it's a prime target to put the global state to work.
+
+So first let's install Redux: npm install Redux
+
+Then we have to initialize our central store/global state - where? index.js
+
+import { createStore } from 'redux'
+
+What is the only thing that can update the store, according to our diagram? The reducer. So we need to pass the reducer in as an argument to createStore() whenever we call it if we want it to work.
+
+
+Let's make our reducer in its own reducer.js file. A reducer is just a function giving you access to the state and returning the updated state.
+
+const initialState = {           //this is the equivalent of useState in a local state
+  count: 0
+}
+
+const reducer = (state = initialState, action) => {
+  return state
+}
+
+export default reducer
+
+// state = initialState means assign initialState ONLY if the state is null
+// initialState can have multiple values
+
+
+Question from Mike - can you have multiple reducer files?
+Per Azam - yes, and we'll see that later in the week, but eventually they merge down to one reducer
+
+Now in our index.js:
+
+const store = createStore(reducer)
+
+Now how can we make our other components aware that the global state is available? You only have to tell the root(App) component; all the other children will then be aware.
+
+So we need to install another package:
+npm install react-redux
+
+This allows you to inject the global state to your components.
+
+We need to import a provider - in index.js:
+
+import {Provider} from 'react-redux' 
+
+then wrap your component with it:
+<Provider store = {store}><App /></Provider>
+
+How do we know we have Redux working successfully? There are Redux DevTools as a browser extension just like there are React DevTools: 
+https://chrome.google.com/webstore/detail/redux-devtools/lmhkpmbekcpmknklioeibfkpmmfibljd?hl=en
+
+Then we need to add the redux dev tools as a second argument to our createStore function:
+
+const store = createStore(reducer, window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__())
+
+(the big window.whatever thing is from http://extension.remotedev.io/#usage)
+
+So we want the Counter component to change the value of count within the global state, and we want DisplayCounter to read the value from the global state and display it. We need to import the connect function from react-redux - this is used to connect the component with the global state. It takes 2 arguments depending on what you want to do. We also need a function that takes the values from the global state and returns a new object that will be available in the props:
+
+In DisplayCounter.js:
+
+import {connect} from 'react-redux'
+
+function DisplayCounter(props) {
+  return (
+    <div>
+    <h1>DisplayCounter</h1>
+    <h1>{props.ctr}</h1>
+    </div>
+  )
+}
+
+const mapStateToProps = (state) => {
+  return {
+    ctr: state.count  //you can call this count or whatever instead of ctr if you want
+  }
+}
+
+export default connect(mapStateToProps)(DisplayCounter)
+
+Question from Shawn - so normally, the root component would be BaseLayout instead of App, correct?
+Per Azam - yes, when you have multiple 'pages', your root will be BaseLayout, and that's what you want to wrap with the Provider.
+
+Question from Katherine - so now, if our counter is going to the global state, if we had 2 instances of Counter, they would both update the same count?
+Per Azam - Yes. If you wanted counters that kept a separate count at this point, you'd need to keep those values in their local states and pass up to App like we did in plain React.
+
+If we had a name saved in the global state and wanted to display it in DisplayCounter, how could we do that? Just add it in mapStateToProps.
+
+function DisplayCounter(props) {
+  return (
+    <h1>DisplayCounter</h1>
+    <h1>{props.ctr}</h1>
+    <h1>{props.fullName}</h1>
+  )
+}
+
+const mapStateToProps = (state) => {
+  return {
+    ctr: state.count  
+    fullName: state.name
+  }
+}
+
+Redux will take a bit of time to sink in, with all of these moving parts.
+
+
+So let's update our Counter so that it can also read from the global state:
+
+import { connect } from 'react-redux'
+
+function Counter(props) {
+  const handleIncrement = () => {
+
+  }
+
+  return (
+    <div>
+    <h1>{props.ctr}</h1>
+    <button onClick = {handleIncrement}>Increment</button>
+    </div>
+  }
+}
+
+const mapStateToProps = (state) => {
+  return {
+    ctr: state.count
+  }
+}
+
+export default connect(mapStateToProps)(Counter)
+
+We can look in the Redux DevTools to see the props. And it is taking those values from the global state. It's getting a "slice" of the global state depending on what values we selected for in mapStateToProps.
+
+How then can we update the global state, so that the components reading from the global state will update their display automatically?
+
+We need a mapDispatchToProps function. Technically you can call it whatever, but all documentation online will call it this (just like mapStateToProps).
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onIncrement: () => dispatch({type: 'INCREMENT'})
+  }
+}
+
+Anytime you want to update the global state, you have to dispatch an action that will eventually reach the reducer.
+
+Inside the dispatch you can pass anything you want, but you must pass a type property with a descriptive string.
+
+Then mapDispatchToProps becomes another argument to connect()
+
+
+import { connect } from 'react-redux'
+
+function Counter(props) {
+  const handleIncrement = () => {
+    props.onIncrement()
+  }
+
+  return (
+    <div>
+    <h1>{props.ctr}</h1>
+    <button onClick = {handleIncrement}>Increment</button>
+    </div>
+  )
+}
+
+const mapStateToProps = (state) => {
+  return {
+    ctr: state.count
+  }
+}
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onIncrement: () => dispatch({type: 'INCREMENT'})
+  }
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(Counter)
+
+So we can see the dispatch happening in DevTools, but the state is not getting updated by the reducer. Let's look at our reducer - we don't really have any update functionality in it yet:
+
+const initialState = {           //this is the equivalent of useState in a local state
+  count: 99
+  name: "John Doe"
+}
+
+const reducer = (state = initialState, action) => {
+  if(action.type == 'INCREMENT') {
+    return {
+      ...state,
+      count: state.count + 1 
+     } 
+  }
+  return state 
+}
+
+export default reducer
+
+So you can see now we are updating the global state (and thus the displays that are reading from it).
+
+
+what if we had an isAuthenticated property in the state? (this section is a bit incomplete, kinda lost the plot 'cause he was going too fast, sorry)
+
+
+const handleAuthenticate = () => {
+  props.onAuthenticate()
+}
+
+const mapDispatchToProps = (dispatch) => {
+
+}
+
+  return (
+    <div>
+    <h1>{props.ctr}</h1>
+    <button onClick = {handleIncrement}>Increment</button>
+    <button onClick = {handleAuthenticate}>Authenticate</button>
+    </div>
+  )
+
+But we need to update the reducer as well:
+
+const reducer = (state = initialState, action) => {
+  if(action.type == 'INCREMENT') {
+    return {
+      ...state,
+      count: state.count + 1 
+     } 
+  } else if(action.type == 'AUTHENTICATE') {
+    return (
+      ...state,
+      isAuthenticated: true
+  }
+  return state 
+}
+
+Question from Shawn - do we need the else in the else if?
+Per Azam - it will work fine without it, but it will do unnecessary checks it doesn't need. For example if you hit the increment button, it will update the state as lined out under the 'INCREMENT' action. BUT it will also then go on to check whether or not the action is 'AUTHENTICATE' before it stops. Else-if prevents this extra unneeded check.
+
+Question from Megan - what's the benefit to the spread operator again?
+Per Azam - it copies all the values of the current state without changing them, then updates just the one(s) you specify that you want changed. This helps if you are changing multiple values, because otherwise they have a tendency to overwrite one another and only the very last one gets sent.
+
+If you're not interesting in changing the state, but just displaying, you only need to pass mapStateToProps to connect. You won't need mapDispatchToProps.  
+
+BUT if you only want the reverse, just to update and not display, it's not exactly the reverse. You need:
+export default connect(null, mapDispatchToProps)(Counter)
+
+- - - - 
+What if we wanted to pass a text value that could add larger numbers to our counter?
+
+import { connect } from 'react-redux'
+import {useState} from 'react
+
+function Counter(props) {
+
+  const [value, setValue] = useState(0)
+
+  const handleIncrement = () => {
+    props.onIncrement()
+  }
+
+  const handleOnChange = (e) => {
+    setValue(parseInt(e.target.value))
+  }
+
+  const handleAdd = () => {
+    props.onadd(value)
+
+  return (
+    <div>
+    <h1>{props.ctr}</h1>
+	<input type = 'text onChange= {handleOnChange}/>
+  	<button onClick = {handleAdd}>ADD</button>
+    
+	<button onClick = {handleIncrement}>Increment</button>
+    </div>
+  )
+}
+
+const mapStateToProps = (state) => {
+  return {
+    ctr: state.count
+  }
+}
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onIncrement: () => dispatch({type: 'INCREMENT'})
+    onAdd: (value) => dispatch({type: 'ADD', payload: value})
+  }
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(Counter)
+
+whenever extra things are passed in dispatch, they're generally labeled 'payload' but you can call it whatever you want. What you're actually passing needs to be an argument in the anonymous function in order to be included in the dispatch object.
+
+
+Then we need to add the Add action to our reducer:
+
+} else if(action.type == 'ADD') {
+    return {
+      ...state,
+      count: state.count + action.payload
+    }
+  }
+
+  return state
+
+}
+
+- - - - 
+
+ASSIGNMENT:
+
+Today's assignment is basically what we did in class today but better organized and adding subtraction to the mix.
+
+3 components - Increment/Decrement, Add/Subtract, and Display (hint: Display should have no interest in dispatching, and inc/dec and add/sub should have no interest in displaying). Add/Subtract will increment or decrement by the amount inserted in the text box.
+
+Work in small steps since there are so many places where things could be breaking down.
+
+Question from Neil - what's the best way to build? Reducer first, actions first?
+Per Azam - start with a reducer that just returns an initial state.
+Only use mapStateToProps if your component is displaying something from the global state, otherwise pass in null.
+Only use mapDispatch to Props if your component is updating the global state, otherwise leave that argument out of the connect() function.
+
+
+Recommendation from Azam - after you finish the assignment once, do it again from scratch. Building familiarity with the process is key.

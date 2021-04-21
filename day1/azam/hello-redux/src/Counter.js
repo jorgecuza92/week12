@@ -30,8 +30,6 @@ function Counter(props) {
 
             <button onClick={handleIncrement}>Increment</button>
             <button onClick={handleAuthenticate}>Authenticate User</button>
-            
-
         </div>
     )
 }

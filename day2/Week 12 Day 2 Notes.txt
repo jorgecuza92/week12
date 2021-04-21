@@ -1,0 +1,539 @@
+Week 12 Day 2 Notes
+
+
+Activity 2 - To-Do List App
+
+import { useState } from 'react'
+
+function App() {
+
+  const [taskName, setTaskName] = useState('') 
+
+  const handleOnChange = (e) => {
+    setTaskName(e.target.value)     //don't need to do [e.target.name] b/c we only have 1 textbox
+  } 
+
+  const handleAddTask = () => {
+    do something
+  }
+
+  return(
+    <div>
+      <h1>ToDoList</h1>
+      <input type = "text" onChange={handleOnChange}/>
+      <button onClick={handleAddTask}>Add</button>
+    </div>
+  )
+}
+
+export default App
+
+
+To set up handleAddTask, we need to get Redux set up a bit first.
+
+In index.js:
+
+import { createStore } from 'redux'
+import reducer from './store/reducer'
+
+
+const store = createStore(reducer, window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__()
+)
+
+
+So now we need to create our reducer.  In reducer.js:
+
+Remember, a reducer is just a function that takes in a state and an action, and returns an updated state.
+
+const initialState = {
+  tasks: []
+}
+
+const reducer = (state = initialState, action) => {
+  return state
+}
+
+export default reducer
+
+Now back to index.js - we need to wrap our root component with the provider:
+import { Provider } from 'react-redux'
+
+<Provider store = {store}><App /></Provider>
+
+
+Now let's go back to our App component:
+
+How do we get the name of the task that was entered, and get it all the way to the global state? We need to set up the dispatch to send it to the reducer. First, we need to import connect to hook up our App component to the global state.
+
+import { connect } from 'react-redux'
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onTaskAdd: () => dispatch({type: 'TASK_ADD'})
+  }
+}
+
+export default connect(null, mapDispatchToProps)(App)
+
+So now we have mapDispatchToProps set up - how do we call onTaskAdd?
+
+const handleAddTask = () => {
+  props.onTaskAdd(taskName)
+}
+
+Ok, this will call it, but we need to pass some sort of argument to the empty anonymous function defined as onTaskAdd within mapDispatchToProps. Otherwise we won't be able to send data with our dispatch.
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onTaskAdd: (task) => dispatch({type: 'TASK_ADD', payload: task})
+  }
+}
+
+How would we send if each task also had a priority? (We don't right now, but just for demonstration purposes.)
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onTaskAdd: (task) => dispatch({type: 'TASK_ADD', payload: {name: task, priority: 'high'})
+  }
+}
+
+
+"payload", "mapDispatchToProps", and "mapStateToProps" could all technically be called anything you want; the code would still work. But by convention they have those names so no one looking at the code is confused as to what's happening.
+
+So everything in App. js is set up, but for the global state to actually be updated, we need to update our reducer:
+
+reducer.js:
+
+const reducer = (state = initialState, action) => {
+    if(action.type === 'TASK_ADD') {
+        return {
+            ...state,
+            tasks: state.tasks.concat(action.payload)
+        }
+    }
+    return state
+}
+
+We have to use .concat instead of .push because we can't modify the state, we can only replace it with the updated state. So .concat returns a NEW array with the addition as the end, instead of changing the existing array, which means it works for our purposes.
+
+So let's create our display component - TaskList.js:
+
+function TaskList(props) {
+  return(
+    <h1>TaskList</h1>
+  )
+}
+
+And inject it into our App component just below the button:
+
+  return(
+    <div>
+      <h1>ToDoList</h1>
+      <input type = "text" onChange={handleOnChange}/>
+      <button onClick={handleAddTask}>Add</button>
+      <TaskList />
+    </div>
+  )
+
+
+So how do we get the tasks from the global state to display them?  In TaskList.js:
+
+import { connect } from 'react-redux
+
+
+function TaskList(props) {
+
+  const tasks = props.tasks
+
+  const taskItems = tasks.map(task, index) => {
+    return<li key={index}>{task}</li>
+  })
+
+  return(
+    <h1>TaskList</h1>
+    {taskItems}
+  )
+}
+
+const mapStateToProps = (state) => {
+  return {
+    tasks: state.tasks
+  }
+}
+
+export default connect(mapStateToProps)(TaskList)
+
+
+So now we can see our tasks are being pulled from the global state and displayed.
+
+
+In this scenario, Redux might be overkill, since it's just one parent and one child component involved, but it was a straightforward example to let us run through the basic setup of Redux again.
+
+- - - - - -
+
+***ACTION TYPES***
+
+Redux has a way to help us avoid issues with possible typos when listing our action options.  Right now, if you make an error, it just won't work but won't give you an error message.  Let's create an actionTypes.js file within the store/actions directory tree:
+
+export const TASK_ADD = 'TASK_ADD'
+
+And then we'll import it in App.js:
+
+import * as actionTypes from './store/actions/actionTypes'   //this will bring in everything
+
+then in our mapDispatchToProps function:
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onTaskAdd: (task) => dispatch({type: actionTypes.TASK_ADD, payload: task})
+  }
+}
+
+and in the reducer:
+
+import * as actionTypes from './actions/actionTypes'   
+
+const reducer = (state = initialState, action) => {
+    if(action.type === actionTypes.TASK_ADD) {
+        return {
+            ...state,
+            tasks: state.tasks.concat(action.payload)
+        }
+    }
+    return state
+}
+
+Now if you put actionTypes.TASKADD instead, it will give you an error that lets you know where you messed up.  We could do the same thing with our INCREMENT action from yesterday's assignment.
+
+***ACTION CREATORS***
+
+What if we could replace everything after dispatch in mapDispatchToProps with something else, so you're not writing this out again and again (if, for example, you're doing the same action from 5 different components)
+
+In /store/creators, we'll make actionCreators.js:
+
+import * as actionTypes from '../actions/actionTypes'
+
+export const addTask = (payload) => {
+  return {
+    type: actiontypes.TASK_ADD
+    payload: payload
+  }
+}
+
+Then within App.js:
+
+import * as actionCreators from './store/creators/actionCreators'
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onIncrement: () => dispatch(actionCreators.addTask())
+  }
+}
+
+
+***SWITCH***
+
+Yesterday's assignment had quite the if ladder. A simpler way to do that is with switch.  (Per Luke: "If you have like 5 or 6 actions, its easier to use a switch and not write else if 5 times.") If you have 4+ actions, that's a good time to put it to use.  But for now, let's say we have an increment function included with our to-do list.
+
+const initialState = {
+  tasks: []
+  count: 0
+}
+
+const reducer = (state = initialState, action) => {
+  switch(action.type) {
+    case actionTypes.INCREMENT:
+      return (
+        ...state,
+        count: state.count+1
+    case actionTypes.TASK_ADD:
+      return( 
+        ..state,
+        tasks: state.tasks.concat(action.payload)
+    default:
+       return state
+  }
+}
+
+export default reducer
+
+- - - - 
+ACTIVITY - ACTIONS AND CREATORS
+
+Take yesterday's assignment and implement action types and action creators.
+
+- - - -
+
+*** FETCH INFO FROM API TO GLOBAL STATE ***
+
+Let's create a new component, MoviePage.js:
+
+function MoviePage() => {
+  return(
+    <h1>MoviePage</h1>
+  )
+}
+
+export default MoviePage
+
+And also a BaseLayout component:
+
+function BaseLayout(props) {
+  return (
+    <div>
+    </div>
+  )
+}
+
+In index.js, we'll remove App and replace it with <BaseLayout> inside <Provider>. We also need to:
+import { BrowserRouter, Route, and Switch } from 'react-router-dom'
+
+<Provider store={store}>
+<BaseLayout>
+  <Switch>
+  <Route exact path = '/' component = {App} />
+  <Route exact path = '/movies' component = {MoviePage} />
+  </Switch>
+</BaseLayout>
+</Provider>
+
+
+So then back to MoviePage:
+
+import { useEffect } from 'react
+
+function MoviePage() => {
+  useEffect(() => {
+    fetchMovies()
+  }, [])
+
+const fetchMovies = () => {
+  fetch('movieURLfromOMDB')
+  .then(response => respons.json())
+  .then(result => {
+    console.log(result)
+  })
+
+  return(
+    <h1>MoviePage</h1>
+  )
+}
+
+export default MoviePage
+
+If we think we have other components that may want to display the movies, we need to put the movies in the global state.
+
+import { useEffect } from 'react
+import { connect } from 'react-redux'
+
+function MoviePage() => {
+  useEffect(() => {
+    fetchMovies()
+  }, [])
+
+const fetchMovies = () => {
+  fetch('movieURLfromOMDB')
+  .then(response => respons.json())
+  .then(result => {
+    props.onMoviesLoaded(result.Search)
+  })
+
+  return(
+    <h1>MoviePage</h1>
+  )
+}
+
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onMoviesLoaded: (movies) => dispatch({type: 'MOVIES_LOADED', payload: movies})
+  }
+}
+
+export default connect(null, mapDispatchToProps)(MoviePage)
+
+Now we need to update the reducer:
+
+const initialState = {
+  tasks: []
+  count: 0
+  movies: []
+}
+
+const reducer = (state = initialState, action) => {
+  switch(action.type) {
+    case actionTypes.INCREMENT:
+      return {
+        ...state,
+        count: state.count+1
+      }
+    case actionTypes.TASK_ADD:
+      return { 
+        ..state,
+        tasks: state.tasks.concat(action.payload)
+      }
+    case 'MOVIES_LOADED':
+      return {
+        ...state,
+        movies: action.payload
+      }
+    default:
+       return state
+  }
+}
+
+export default reducer
+
+Then later we can refactor and create an action type and action creator for this:
+
+export const MOVIES_LOADED = 'MOVIES_LOADED'
+
+export const saveMovies = (movies) => {
+  return {
+    type: actionTypes.MOVIES_LOADED,
+    payload: movies
+  }
+}
+
+then import action creators into MoviePage, and update mapDispatchToProps to:
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onMoviesLoaded: (movies) => dispatch(actionCreators.saveMovies(movies)
+  }
+}
+
+and last, update reducer to:
+
+    case actionTypes.MOVIES_LOADED:
+      return {
+        ...state,
+        movies: action.payload
+      }
+
+Question from Clarence - why did we just do action.payload rather than anything with the state?
+Per Azam - we're getting the full list of movies from the API each time, so we don't have to go any sort of concat kind of thing.
+
+Question from Neil - why did we need useEffect?
+Per Azam - useEffect is the hook that works like ComponentDidMount and ComponentDidUpdate for functional components, to let us access the local state.
+
+- - - -
+
+Let's create a Menu component that changes appearance based on whether or not a user is logged in.
+
+function Menu(props) {
+  return (
+    <div>
+	<div>Home</div>
+	<div>Login</div>
+	<div>Register</div>
+	<div>Profile</div>
+	<div>Logout</div>
+    </div>
+  }
+}
+
+Then we'll inject it in BaseLayout.
+
+On the MoviePage, we'll add fake Login/Logout buttons for now:
+
+  return(
+	<div>
+	<h1>MoviePage</h1>
+	<button>Login</button>  
+	<button>Logout</button>
+	</div>
+)
+
+This is a perfect place to use the global state. In our reducer, we'll add an isAuthenticated property and set it to false.
+
+Then on the MoviePage
+
+  return(
+	<div>
+	<h1>MoviePage</h1>
+	<button onClick = {props.onLogin()}>Login</button>  
+	<button>Logout</button>
+	</div>
+)
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onMoviesLoaded: (movies) => dispatch(actionCreators.saveMovies(movies)
+    onLogin: () => dispatch({type: 'LOGIN'})
+  }
+}
+
+
+BUT...if we try to load this now, it looks like it fired twice even though we didn't click a button. Why? React tries to evaluate anything in curly braces on page load, and then if it sees a function, it tries to call that function. So we need to change the button to this:
+
+	<button onClick = {() => props.onLogin()}>Login</button>  
+
+Then let's add a 'LOGIN' case in our reducer switch:
+  case 'LOGIN':
+    return {
+      ...state,
+      isAuthenticated: true (OR isAuthenticated: isAuthenticated will toggle the current state)
+    }
+
+Let's do through and do the same for logout:
+
+<button onClick = {() => props.onLogout()}>Login</button> 
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onMoviesLoaded: (movies) => dispatch(actionCreators.saveMovies(movies)
+    onLogin: () => dispatch({type: 'LOGOUT'})
+  }
+}
+
+  case 'LOGOUT':
+    return {
+      ...state,
+      isAuthenticated: false
+    }
+
+
+So we've got our global state changing, but the menu does not change. But it has access to the global state like anything else. 
+
+in Menu.js
+
+import { connect } from 'react-redux'
+
+function Menu(props) {
+  return (
+    <div>
+	<div>Home</div>
+	<div>Login</div>
+	<div>Register</div>
+	<div>Profile</div>
+	<div>Logout</div>
+         {props.isLoggedIn ? "TRUE": "FALSE"}
+    </div>
+  }
+}
+
+const mapStateToProps = (state) => {
+  return {
+    isLoggedIn: state.isAuthenticated
+  }
+}
+
+
+export default connect(mapStateToProps)(Menu)
+
+Let's take a look at the page to see if we can display the value of isLoggedIn on the page. We can see that it's there and that it changes when we click Login or Logout.  But we want to change what the menu displays based on whether or not we're logged in. We can show or hide other things in the menu based on this status:
+
+function Menu(props) {
+  return (
+    <div>
+	<div>Home</div>
+	{!props.isLoggedIn ? <div>Login</div>: null}
+	{!props.isLoggedIn ? <div>Register</div>: null}
+	{props.isLoggedIn ? <div>Profile</div>: null}
+	{props.isLoggedIn ? <div>Logout</div>: null}
+    </div>
+  }
+}
+
+We can see that this makes the Profile and Logout links disappear when a user is NOT logged in, and hides the Login and Register links when they ARE logged in.
