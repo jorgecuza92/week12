@@ -1,0 +1,628 @@
+Week 12 Day 3 Notes
+
+
+***MULTIPLE REDUCERS***
+Let's make a Counter/To-Do List React app to show why multiple reducers can be helpful.
+
+Counter.js
+
+import '../App.css'
+
+function Counter(props) {
+  return (
+   <div className="App">
+   <h1>0</h1>
+   <button>Increment</button>
+   <button>Decrement</button>
+   </div>
+  )
+}
+
+export default Counter
+
+then inject Counter into App.js
+
+TodoList.js for TodoList component:
+
+import '../App.css'
+
+function TodoList(props) {
+  return (
+   <div className="App">
+   <input type="text" placeholder="Task">
+   <button>Add</button>
+   </div>
+  )
+}
+
+export default TodoList
+
+
+So we need to create our Redux store in index.js
+
+import { createStore } from 'redux'
+
+const store = createStore(reducer)
+
+
+but wait, we need a reducer:
+reducer.js:
+
+const initialState = {
+  count: 0
+  tasks: []
+}
+
+const reducer = (state = initialState, action => {
+  return state
+}
+
+export default reducer
+
+then we need the Provider to make the store accessible to the other components:
+
+index.js
+<Provider store = {store}>
+  <App/>
+</Provider>
+
+And let's update our store so we can debug:
+
+const store = createStore(reducer, window.__REDUX_DEVTOOLS_EXTENSIONblahblahyadayada)
+
+
+Then let's import connect to our Counter so that we can access the store:
+
+import '../App.css'
+import { connect { from 'react-redux'
+
+function Counter(props) {
+  return (
+   <div className="App">
+   <h1>0</h1>
+   <button onClick = {() => props.onIncrement()}>Increment</button>
+   <button onClick = {() => props.onDecrement()}>Decrement</button>
+   </div>
+  )
+}
+
+const mapStateToProps = (state) => {
+  return {
+    ctr: state.count
+  }
+}
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onIncrement: () => dispatch({type: 'INCREMENT'})
+    onDecrement: () => dispatch({type: 'DECREMENT'})
+  }
+}
+
+export default connect(mapStateToProps)(Counter)
+
+Always make sure your action is getting fired before you move on to the reducer; otherwise there's no point to updating the reducer. But we can test this and see that the actions are getting fired.
+
+Now, reducer.js:
+
+const reducer = (state = initialState, action) => {
+  switch(action.type) {
+    case 'INCREMENT':
+      return {
+        ...state,
+        count: state.count + 1
+      }
+    case 'DECREMENT:
+      return {
+        ..state,
+        count: state.count - 1
+      }
+    default:
+      return state
+  }
+}
+
+export default reducer
+
+
+So now we can see our global state is changing. Let's update our counter display to show the global counter value:
+
+
+function Counter(props) {
+  return (
+   <div className="App">
+   <h1>{props.ctr}</h1>
+   <button onClick = {() => props.onIncrement()}>Increment</button>
+   <button onClick = {() => props.onDecrement()}>Decrement</button>
+   </div>
+  )
+}
+
+Now for our TodoList, let's update the reducer to start with:
+
+const reducer = (state = initialState, action) => {
+  switch(action.type) {
+    case 'INCREMENT':
+      return {
+        ...state,
+        count: state.count + 1
+      }
+    case 'DECREMENT:
+      return {
+        ..state,
+        count: state.count - 1
+      }
+    case 'ADD_TASK':
+      return {
+        ...state,
+        tasks: state.tasks.concat(action.payload)
+      }
+    case 'REMOVE_TASK:
+      return {
+        ...state,
+    (we'll do this later)
+    default:
+      return state
+  }
+}
+
+export default reducer
+
+
+So let's start with getting the Add Task Value from the text box. First we need useState so we can use the local state:
+
+import '../App.css'
+import {useState} from 'react'
+
+function TodoList(props) {
+  const [value, setValue = useState('')
+
+  const handleOnChange = (e) => {
+    setValue(e.target.value)
+
+  return (
+   <div className="App">
+   <input type="text" onChange={handleOnChange)>
+   <button>Add</button>
+   </div>
+  )
+}
+
+export default TodoList
+
+Now we can see in our dev tools that whatever we type in the text box is available in the local state. So let's pass that value to the global state with a button click. So we'll need to bring in connect:
+
+import '../App.css'
+import {useState} from 'react'
+import { connect } from 'react-redux'
+
+function TodoList(props) {
+  const [value, setValue = useState('')
+
+  const handleOnChange = (e) => {
+    setValue(e.target.value)
+
+  const handleAddTask = () => {
+    props.onAddTask(value)
+
+  return (
+   <div className="App">
+   <input type="text" onChange={handleOnChange)>
+   <button onClick = {handleAddTask}>Add</button>
+   </div>
+  )
+}
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onAddTask: (task) => dispatch({type: 'ADD_TASK', payload: task})
+  }
+}
+
+export default connect(null, mapDispatchToProps)(TodoList)
+
+Now, let's see if that is going to the global state. In the dev tools, we can see the global state updating.
+
+If you want to clear the textbox afer entry, you can do it like this:
+
+import '../App.css'
+import {useState} from 'react'
+import { connect } from 'react-redux'
+
+function TodoList(props) {
+  const [taskName, setTaskName = useState('')
+
+  const handleOnChange = (e) => {
+    setValue(e.target.value)
+
+  const handleAddTask = () => {
+    props.onAddTask(taskName)
+    setTaskName('')
+
+  return (
+   <div className="App">
+   <input type="text" onChange={handleOnChange) value = {taskName}>
+   <button onClick = {handleAddTask}>Add</button>
+   </div>
+  )
+}
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onAddTask: (task) => dispatch({type: 'ADD_TASK', payload: task})
+  }
+}
+
+So now we were able to add multiple tasks to an array. To delete a task, let's first build a way to view all the tasks:
+
+in TodoList.js:
+
+const tasks = props.tasks
+const taskItems = tasks.map((task, index) => {
+  return <div key={index}>{task}
+         <button onClick = {handleDelete}>Delete</div></div>
+})
+
+const mapStateToProps = (state) => {
+  return {
+    tasks: state.tasks
+  }
+}
+
+Ok, but we need to pinpoint which task we want to delete. Since we're within the map function, we are iterating through the tasks, so we can just do:
+
+const handleDelete = (task) => {
+  props.onDeleteTask(task)
+}
+
+const handleDelete = (task) => {
+  console.log(task)
+}
+
+const tasks = props.tasks
+const taskItems = tasks.map((task, index) => {
+  return <div key={index}>{task}
+         <button onClick = {() => handleDelete(task)}>Delete</div></div>
+})
+ 
+
+So we can see that at this stage, the task is getting logged in the console and only on the button click. So now we can pass the task to our dispatch function:
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onAddTask: (task) => dispatch({type: 'ADD_TASK', payload: task})
+    onDeleteTask: (task) => dispatch({type: 'DELETE_TASK', payload: task})
+  }
+}
+
+then in reducer.js:
+
+const reducer = (state = initialState, action) => {
+  switch(action.type) {
+    case 'INCREMENT':
+      return {
+        ...state,
+        count: state.count + 1
+      }
+    case 'DECREMENT:
+      return {
+        ..state,
+        count: state.count - 1
+      }
+    case 'ADD_TASK':
+      return {
+        ...state,
+        tasks: state.tasks.concat(action.payload)
+      }
+    case 'DELETE_TASK:
+      return {
+        ...state,
+        tasks: state.tasks.filter((task) => task != action.payload)
+    default:
+      return state
+  }
+}
+
+This state.tasks.filter will return an array of every task *except* the one that matches the action.payload.
+
+So now we have a reducer with multiple different kinds of tasks. And that's fine, it works, and it's not really suffering performance-wise or anything. But out in the field, you may have hundreds of actions, and trying to find them in a single reduce gets tricky. What if we made it so that one reducer only managed one particular slice of the global state - only the stuff related to the counter, or only the stuff related to the todo list.
+
+In the end, these all join together behind the scenes to function as a single reducer. (Good interview question, btw.) 
+
+So let's go to the store directory and make a reducers folder within it, and a counter.js file and a task.js file within it.
+
+In the counter reducer, we only want to deal with counter-related stuff.
+
+reducer/counter.js
+
+const initialState = {
+  count: 0
+}
+
+const reducer = (state = initialState, action) => {
+    switch(action.type) {
+    case 'INCREMENT':
+      return {
+        ...state,
+        count: state.count + 1
+      }
+    case 'DECREMENT:
+      return {
+        ..state,
+        count: state.count - 1
+      }
+    default:
+      return state
+  }
+}
+
+export default reducer
+
+So now we have a reducer that just handles counter stuff.  Let's do the same for the tasks:
+
+reducer/tasks.js
+
+const initialState = {
+  tasks: []
+}
+
+const reducer = (state = initialState, action) => {
+  switch(action.type) {
+    case 'ADD_TASK':
+      return {
+        ...state,
+        tasks: state.tasks.concat(action.payload)
+      }
+    case 'DELETE_TASK':
+      return {
+        ...state,
+        tasks: state.tasks.filter((task) => task != action.payload)
+    default:
+      return state
+  }
+}
+
+export default reducer
+
+And at this point, reducer.js is redundant and can be deleted. Let's also remove the import statment from index.js, and replace it with our separate reducers.
+
+index.js:
+
+import counterReducer from './store/reducers/counter'
+import taskReducer from './store/reducers/tasks'
+
+// we can call these anything we want since we did default exports
+
+But, there's only one argument in createStore for a reducer; how do we manage that? Remember how all the reducers combine down to one? Let's do that:
+
+const rootReducer = combineReducers({
+  counterR: counterReducer
+  taskR: taskReducer
+})
+
+The property name you choose can be anything, but pick a good one as you will be using it again later.
+
+then
+const store = createStore(rootReducer, window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUXblahblahyadayada)
+
+So, where is it that those property names come in again? mapStateToProps
+
+in TodoList.js:
+
+const mapStateToProps = (state) => {
+   tasks: state.taskR.tasks 
+}
+
+//mapStateToProps needs globalstate.reducer.sliceofstate
+
+So now we'll need to do the same for the Counter component:
+
+const mapStateToProps = (state) => {
+  return {
+    ctr: state.counterR.count
+  }
+}
+
+- - - 
+
+So let's create action types and creators for these like we did yesterday.
+
+in store/actions/actionTypes.js:
+
+export const INCREMENT = 'INCREMENT'
+export const DECREMENT = 'DECREMENT'
+export const ADD_TASK = 'ADD_TASK'
+export const DELETE_TASK = 'DELETE_TASK'
+
+then in our counter reducer:
+
+import * as actionTypes from '../actions/actionTypes:
+
+const reducer = (state = initialState, action) => {
+    switch(action.type) {
+    case actionTypes.INCREMENT:
+      return {
+        ...state,
+        count: state.count + 1
+      }
+    case actionTypes.DECREMENT:
+      return {
+        ..state,
+        count: state.count - 1
+      }
+    default:
+      return state
+  }
+}
+
+export default reducer
+
+
+then in reducer/tasks.js
+
+
+import * as actionTypes from '../actions/actionTypes:
+
+const initialState = {
+  tasks: []
+}
+
+const reducer = (state = initialState, action) => {
+  switch(action.type) {
+    case actionTypes.ADD_TASK:
+      return {
+        ...state,
+        tasks: state.tasks.concat(action.payload)
+      }
+    case actionTypes.DELETE_TASK:
+      return {
+        ...state,
+        tasks: state.tasks.filter((task) => task != action.payload)
+    default:
+      return state
+  }
+}
+
+export default reducer
+
+
+So now let's build action creators:
+
+store/creators/actionCreators.js:
+
+import * as actionTypes from '../actions/actionTypes'
+
+export const increment = () => {
+  return {
+    type: actionTypes.INCREMENT
+  }
+
+export const decrement = () => {
+  return {
+    type: actionTypes.DECREMENT
+  }
+
+export const addTask = (task) => {
+  return {
+    type: actionTypes.ADD_TASK,
+    payload: task
+  }
+
+export const deleteTask = (task) => {
+  return {
+    type: actionTypes.DELETE_TASK,
+    payload: task
+  }
+
+
+then within Counter:
+
+import * as actionCreators from '../store/creators/actionCreators'
+
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onIncrement: () => dispatch(actionCreators.increment())
+    onDecrement: () => dispatch(actionCreators.decrement())
+  }
+}
+
+and within TodoList:
+
+import * as actionCreators from '../store/creators/actionCreators'
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onIncrement: (task) => dispatch(actionCreators.addTask(task))
+    onDecrement: (task) => dispatch(actionCreators.deleteTask(task))
+  }
+}
+
+
+- - - - 
+Activity 1 - Multiple Reducers
+
+Counter and on same page, random image displayed each time a user clicks on a button (pulled from the picsum.photos service).
+
+Or you can add the random image component to any other pre-existing Redux app you already have.
+
+Start with one reducer, then once everything is working, you can separate them.
+
+const initialState = {
+  count: 0, 
+  randomImages: []
+}
+
+const reducer = (state = initialState, action => {
+  return state
+}
+
+export default reducer
+
+now let's make a RandomImage component:
+
+import {connect} from 'react-redux'
+
+function RandomImage (props) {
+
+  return (
+    <div><button>Get Random Image</div>
+	
+}
+
+export default RandomImage
+
+and inject it into our App component.
+
+Then we want to link our button to action putting a random image into the global state:
+
+import { connect } from 'react-redux'
+
+  const handleGetRandomImage = () => {
+    const randomURL = `https://picsum.photos/200/300/random${new Date().getTime()}`
+    props.onAddRandomImage(randomURL)
+  }
+
+  return (
+    <div>
+    <button onClick = {handleGetRandomImage}>Get Random Image</button><br/><br/>
+    </div>
+  )
+
+    const mapDispatchToProps = (dispatch) => {
+    return {
+      onAddRandomImage: (url) = > dispatch({type: 'ADD_RANDOM_IMAGE'}, payload:url)
+    }
+  }
+
+export default connect(null, mapDispatchToProps)(RandomImage)
+
+So our action is getting fired, but nothing is going to the state. Let's update our reducer:
+
+const reducer = (state = initialState, action) => {
+    if(action.type === 'ADD_RANDOM_IMAGE') {
+        return {
+          ...state,
+          randomImages: state.randomImages.concat(action.payload)
+        }
+    }
+    return state
+}
+
+export default reducer
+
+
+then in RandomImage.js
+
+const images = props.images
+const imageItems = images.map((image) => {
+  return <img src = {image} />
+})
+
+const mapStateToProps = (state) => {
+  return {
+    images: state.randomImages
+  }
+}
+
+ASSIGNMENT - Continue working on your books app, try to employ multiple reducers for users adding favorite books, add books to cart, etc.  

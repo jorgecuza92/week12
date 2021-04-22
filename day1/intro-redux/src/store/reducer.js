@@ -3,7 +3,9 @@
 // global state
 const initialState = {
   count: 99,
-  name: 'John Doe'
+  name: 'John Doe',
+  counter: 0,
+  randomImages: []
 }
 
 // reducer is a function that gives you access to the state 
@@ -17,6 +19,18 @@ const reducer = (state = initialState ,action) => {
     return {
       ...state,
       count: state.count + action.payload
+    }
+  } else if(action.type == 'INCREASE') {
+    return {
+      counter: state.counter + 1
+    }
+  } else if(action.type == 'DECREASE') {
+    return {
+      counter: state.counter - 1
+    }
+  } else if(action.type == 'RANDOM') {
+    return {
+      randomImages: state.randomImages
     }
   }
   return state

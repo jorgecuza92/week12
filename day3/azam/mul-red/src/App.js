@@ -1,0 +1,17 @@
+
+import './App.css';
+import Counter from './components/Counter';
+import RandomImage from './components/RandomImage';
+import TodoList from './components/TodoList';
+
+
+function App() {
+  return (
+    <div className="App">
+      <Counter />
+      <TodoList />
+    </div>
+  );
+}
+
+export default App;
